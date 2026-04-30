@@ -1,11 +1,11 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import { customerAuthAPI } from '../services/api';
+import { authAPI } from '../services/api';
 
-export const CustomerAuthContext = createContext();
+export const AdminAuthContext = createContext();
 
-export const CustomerAuthProvider = ({ children }) => {
-  const [customer, setCustomer] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('customer_token'));
+export const AdminAuthProvider = ({ children }) => {
+  const [admin, setAdmin] = useState(null);
+  const [token, setToken] = useState(localStorage.getItem('admin_token'));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -19,13 +19,13 @@ export const CustomerAuthProvider = ({ children }) => {
 
   const verifyToken = async () => {
     try {
-      const response = await customerAuthAPI.getCurrentCustomer();
-      setCustomer(response.data.data);
+      const response = await authAPI.getCurrentUser();
+      setAdmin(response.data.data);
       setError(null);
     } catch (err) {
-      localStorage.removeItem('customer_token');
+      localStorage.removeItem('admin_token');
       setToken(null);
-      setCustomer(null);
+      setAdmin(null);
       setError('Token expired or invalid');
     } finally {
       setLoading(false);
@@ -36,12 +36,12 @@ export const CustomerAuthProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await customerAuthAPI.login(email, password);
-      const { token: newToken, customer: customerData } = response.data.data;
-      localStorage.setItem('customer_token', newToken);
+      const response = await authAPI.login(email, password);
+      const { token: newToken, user: adminData } = response.data.data;
+      localStorage.setItem('admin_token', newToken);
       setToken(newToken);
-      setCustomer(customerData);
-      return { success: true, customer: customerData };
+      setAdmin(adminData);
+      return { success: true, admin: adminData };
     } catch (err) {
       const errorMessage = err.response?.data?.message || 'Login failed';
       setError(errorMessage);
@@ -55,18 +55,17 @@ export const CustomerAuthProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await customerAuthAPI.register(
+      const response = await authAPI.register(
         data.name,
         data.email,
         data.password,
-        data.password_confirmation,
-        data.phone
+        data.password_confirmation
       );
-      const { token: newToken, customer: customerData } = response.data.data;
-      localStorage.setItem('customer_token', newToken);
+      const { token: newToken, user: adminData } = response.data.data;
+      localStorage.setItem('admin_token', newToken);
       setToken(newToken);
-      setCustomer(customerData);
-      return { success: true, customer: customerData };
+      setAdmin(adminData);
+      return { success: true, admin: adminData };
     } catch (err) {
       const errorData = err.response?.data;
       let errorMessage = 'Registration failed';
@@ -86,37 +85,37 @@ export const CustomerAuthProvider = ({ children }) => {
 
   const logout = useCallback(async () => {
     try {
-      await customerAuthAPI.logout();
+      await authAPI.logout();
     } catch (err) {
-      console.error('Customer logout error:', err);
+      console.error('Admin logout error:', err);
     } finally {
-      localStorage.removeItem('customer_token');
+      localStorage.removeItem('admin_token');
       setToken(null);
-      setCustomer(null);
+      setAdmin(null);
       setError(null);
     }
   }, []);
 
   return (
-    <CustomerAuthContext.Provider 
+    <AdminAuthContext.Provider 
       value={{ 
-        customer, 
+        admin, 
         token, 
         loading, 
         error, 
         login, 
         register, 
         logout,
-        isAuthenticated: !!customer,
+        isAuthenticated: !!admin,
       }}
     >
       {children}
-    </CustomerAuthContext.Provider>
+    </AdminAuthContext.Provider>
   );
 };
 
-export const useCustomerAuth = () => {
-  const context = useContext(CustomerAuthContext);
-  if (!context) throw new Error('useCustomerAuth must be used within CustomerAuthProvider');
+export const useAdminAuth = () => {
+  const context = useContext(AdminAuthContext);
+  if (!context) throw new Error('useAdminAuth must be used within AdminAuthProvider');
   return context;
 };

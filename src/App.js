@@ -1,96 +1,125 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { CustomerAuthProvider } from './context/CustomerAuthContext';
-import CustomerProtectedRoute from './components/CustomerProtectedRoute';
-import ProtectedRoute from './components/ProtectedRoute';
-import Navigation from './components/Navigation';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
-import Addresses from './pages/Addresses';
-import EspDevices from './pages/EspDevices';
-import Furniture from './pages/Furniture';
-import RfidBinding from './pages/RfidBinding';
-import CustomerRegister from './pages/CustomerRegister';
-import CustomerLogin from './pages/CustomerLogin';
-import CustomerDashboard from './pages/CustomerDashboard';
+import { AdminAuthProvider } from './context/AdminAuthContext';
+
+// Components
+import CustomerProtectedRoute from './components/CustomerProtectedRoute.jsx';
+import AdminProtectedRoute from './components/AdminProtectedRoute.jsx';
+
+// Customer Pages
+import { CustomerLogin } from './pages/CustomerLogin.jsx';
+import { CustomerRegister } from './pages/CustomerRegister.jsx';
+import { CustomerDashboard } from './pages/CustomerDashboard.jsx';
+import { AddressesPage } from './pages/AddressesPage.jsx';
+import { FurniturePage } from './pages/FurniturePage.jsx';
+import { ShiftsPage } from './pages/ShiftsPage.jsx';
+
+// Admin Pages
+import { AdminLogin } from './pages/AdminLogin.jsx';
+import { AdminRegister } from './pages/AdminRegister.jsx';
+import { AdminDashboard } from './pages/AdminDashboard.jsx';
+import { CustomersList } from './pages/AdminCustomersList.jsx';
+import { AdminShiftsList } from './pages/AdminShiftsList.jsx';
+import { RFIDBindingPage } from './pages/AdminRFIDBinding.jsx';
+
+// Styles
+import './styles/global.css';
 import './App.css';
 
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
+    <Router>
+      <AdminAuthProvider>
         <CustomerAuthProvider>
-        <div className="App">
-          <Navigation />
-          <main className="main-content">
-            <Routes>
-              {/* Customer-facing routes (default) */}
-              <Route path="/login" element={<CustomerLogin />} />
-              <Route path="/register" element={<CustomerRegister />} />
-              <Route
-                path="/dashboard"
-                element={
-                  <CustomerProtectedRoute>
-                    <CustomerDashboard />
-                  </CustomerProtectedRoute>
-                }
-              />
+          <Routes>
+            {/* Redirect root to customer login */}
+            <Route path="/" element={<Navigate to="/customer/login" replace />} />
 
-              {/* Admin / user routes */}
-              <Route path="/admin/login" element={<Login />} />
-              <Route path="/admin/register" element={<Register />} />
-              <Route
-                path="/admin"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/addresses"
-                element={
-                  <ProtectedRoute>
-                    <Addresses />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/esp-devices"
-                element={
-                  <ProtectedRoute>
-                    <EspDevices />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/furniture"
-                element={
-                  <ProtectedRoute>
-                    <Furniture />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/bindings"
-                element={
-                  <ProtectedRoute>
-                    <RfidBinding />
-                  </ProtectedRoute>
-                }
-              />
+            {/* ===== CUSTOMER ROUTES ===== */}
+            {/* Public customer routes */}
+            <Route path="/customer/login" element={<CustomerLogin />} />
+            <Route path="/customer/register" element={<CustomerRegister />} />
 
-              {/* Default route */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </main>
-        </div>
+            {/* Protected customer routes */}
+            <Route
+              path="/customer/dashboard"
+              element={
+                <CustomerProtectedRoute>
+                  <CustomerDashboard />
+                </CustomerProtectedRoute>
+              }
+            />
+            <Route
+              path="/customer/addresses"
+              element={
+                <CustomerProtectedRoute>
+                  <AddressesPage />
+                </CustomerProtectedRoute>
+              }
+            />
+            <Route
+              path="/customer/furniture"
+              element={
+                <CustomerProtectedRoute>
+                  <FurniturePage />
+                </CustomerProtectedRoute>
+              }
+            />
+            <Route
+              path="/customer/shifts"
+              element={
+                <CustomerProtectedRoute>
+                  <ShiftsPage />
+                </CustomerProtectedRoute>
+              }
+            />
+
+            {/* ===== ADMIN ROUTES ===== */}
+            {/* Public admin routes */}
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin/register" element={<AdminRegister />} />
+
+            {/* Protected admin routes */}
+            <Route
+              path="/admin/dashboard"
+              element={
+                <AdminProtectedRoute>
+                  <AdminDashboard />
+                </AdminProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/customers"
+              element={
+                <AdminProtectedRoute>
+                  <CustomersList />
+                </AdminProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/shifts"
+              element={
+                <AdminProtectedRoute>
+                  <AdminShiftsList />
+                </AdminProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/rfid-binding"
+              element={
+                <AdminProtectedRoute>
+                  <RFIDBindingPage />
+                </AdminProtectedRoute>
+              }
+            />
+
+            {/* Catch all - redirect to customer login */}
+            <Route path="*" element={<Navigate to="/customer/login" replace />} />
+          </Routes>
         </CustomerAuthProvider>
-      </AuthProvider>
-    </BrowserRouter>
+      </AdminAuthProvider>
+    </Router>
   );
 }
 

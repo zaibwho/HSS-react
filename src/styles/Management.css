@@ -225,6 +225,90 @@
   margin-top: 12px;
 }
 
+.management-table-container {
+  overflow-x: auto;
+  background: var(--white);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.management-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.management-table thead {
+  background: var(--gray-50);
+}
+
+.management-table th,
+.management-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--gray-200);
+  vertical-align: top;
+}
+
+.management-table th {
+  font-size: 0.875rem;
+  color: var(--gray-700);
+  font-weight: 700;
+}
+
+.management-card-header {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--gray-200);
+  margin-bottom: 1rem;
+}
+
+.management-card-header h3 {
+  margin: 0;
+}
+
+.management-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.management-detail-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.management-label {
+  margin: 0 0 0.35rem 0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gray-500);
+  font-weight: 700;
+}
+
+.management-value {
+  margin: 0;
+  color: var(--gray-900);
+  font-weight: 600;
+}
+
+.management-subitem {
+  padding: 0.75rem;
+  margin-top: 0.75rem;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+}
+
+.management-subitem strong {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.management-empty {
+  margin: 0;
+  color: var(--gray-500);
+}
+
 .btn-edit,
 .btn-delete {
   flex: 1;

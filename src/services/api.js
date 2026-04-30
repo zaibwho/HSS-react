@@ -15,7 +15,7 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     // Prefer admin token when present; fall back to customer token.
-    const adminToken = localStorage.getItem('token');
+      const adminToken = localStorage.getItem('admin_token');
     const customerToken = localStorage.getItem('customer_token');
     const token = adminToken ? adminToken : customerToken;
     if (token) {

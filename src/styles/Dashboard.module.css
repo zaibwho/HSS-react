@@ -1,0 +1,97 @@
+.dashboardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.dashboardHeader h2 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.dashboardHeader p {
+  color: var(--gray-500);
+  margin: 0.5rem 0 0 0;
+}
+
+.featureCard {
+  text-align: center;
+  padding: 1rem;
+}
+
+.featureCard .icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.featureCard h3 {
+  margin-bottom: 0.5rem;
+}
+
+.featureCard p {
+  color: var(--gray-600);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.cardHeader {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--gray-200);
+  margin-bottom: 1rem;
+}
+
+.cardHeader h3 {
+  margin: 0;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1.5rem;
+}
+
+.statItem {
+  text-align: center;
+}
+
+.statItem p:first-child {
+  color: var(--gray-500);
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.statItem p:last-child {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--primary);
+  margin: 0;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.actionButtons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.actionButtons button {
+  font-size: 0.875rem;
+  padding: 0.5rem 1rem;
+}
+
+@media (max-width: 768px) {
+  .dashboardHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dashboardHeader button {
+    align-self: flex-start;
+  }
+}
