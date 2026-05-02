@@ -84,6 +84,7 @@ export const FurniturePage = () => {
     try {
       const submitData = {
         ...formData,
+        customer_id: customer?.id,
         quantity: parseInt(formData.quantity),
         default_weight_kg: formData.default_weight_kg ? parseFloat(formData.default_weight_kg) : null,
         length_cm: formData.length_cm ? parseFloat(formData.length_cm) : null,
