@@ -6,6 +6,7 @@ import { formatDateTime, getStatusLabel } from '../utils/helpers';
 import '../styles/Management.css';
 
 const SHIFT_STATUSES = [
+  { value: 'draft', label: 'Draft' },
   { value: 'pending', label: 'Pending' },
   { value: 'in_progress', label: 'In Progress' },
   { value: 'completed', label: 'Completed' },

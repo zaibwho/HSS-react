@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useCustomerAuth } from '../context/CustomerAuthContext';
 import { Layout, Card, Button, Select, Alert, Loading, EmptyState, Badge } from '../components/Common';
 import CustomerNavigation from '../components/CustomerNavigation.jsx';
-import { addressAPI, furnitureAPI } from '../services/api';
-import api from '../services/api';
+import { addressAPI, furnitureAPI, customerApi } from '../services/api';
 import { formatDateTime, getStatusLabel, getStatusColor } from '../utils/helpers';
 import '../styles/Management.css';
 
@@ -34,7 +33,7 @@ export const ShiftsPage = () => {
 
   const fetchShifts = async () => {
     try {
-      const response = await api.get('/shifts');
+      const response = await customerApi.get('/shifts');
       setShifts(response.data.data || []);
       setError('');
     } catch (err) {
@@ -110,16 +109,17 @@ export const ShiftsPage = () => {
 
     try {
       const shiftData = {
+        customer_id: customer?.id,
         pickup_address_id: parseInt(formData.pickup_address_id),
         destination_address_id: parseInt(formData.destination_address_id),
         notes: formData.notes,
-        furniture: selectedFurniture.map(id => ({
+        furniture_lines: selectedFurniture.map(id => ({
           furniture_id: id,
           quantity: furnitureQuantities[id] || furniture.find(f => f.id === id)?.quantity || 1,
         })),
       };
 
-      await api.post('/shifts/initiate', shiftData);
+      await customerApi.post('/shifts/initiate', shiftData);
       setSuccess('Shifting job created successfully');
       fetchShifts();
       resetForm();
@@ -130,7 +130,7 @@ export const ShiftsPage = () => {
 
   const getAddressLabel = (id) => {
     const addr = addresses.find(a => a.id === parseInt(id));
-    return addr ? `${addr.city} - ${addr.address}` : '';
+    return addr ? `${addr.city} - ${addr.line1}` : '';
   };
 
   return (
@@ -161,7 +161,7 @@ export const ShiftsPage = () => {
                 onChange={handleAddressChange}
                 options={addresses.map(a => ({
                   value: a.id,
-                  label: `${a.city} - ${a.address}`,
+                  label: `${a.city} - ${a.line1}`,
                 }))}
                 required
               />
@@ -172,7 +172,7 @@ export const ShiftsPage = () => {
                 onChange={handleAddressChange}
                 options={addresses.map(a => ({
                   value: a.id,
-                  label: `${a.city} - ${a.address}`,
+                  label: `${a.city} - ${a.line1}`,
                 }))}
                 required
               />
