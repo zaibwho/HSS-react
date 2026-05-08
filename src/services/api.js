@@ -1,8 +1,6 @@
 import axios from 'axios';
 
-const API_URL = (typeof process !== 'undefined' && process.env.REACT_APP_API_URL) 
-  ? process.env.REACT_APP_API_URL 
-  : 'http://localhost:8000/api';
+const API_URL = process.env.REACT_APP_API_URL;
 
 // Shared API instance for admin routes
 const api = axios.create({
@@ -75,6 +73,7 @@ export const addressAPI = {
 export const espDeviceAPI = {
   getAll: () => api.get('/esp-devices'),
   getById: (id) => api.get(`/esp-devices/${id}`),
+  revealToken: (id) => api.get(`/esp-devices/${id}/token`),
   create: (data) => api.post('/esp-devices', data),
   update: (id, data) => api.put(`/esp-devices/${id}`, data),
   delete: (id) => api.delete(`/esp-devices/${id}`),
@@ -93,8 +92,8 @@ export const furnitureAPI = {
 export const bindingAPI = {
   getBindings: (furnitureId) => customerApi.get(`/furniture/${furnitureId}/rfid-bindings`),
   createBinding: (furnitureId, data) =>
-    customerApi.post(`/furniture/${furnitureId}/rfid-bindings`, data),
-  getPendingBindings: () => api.get('/esp/rfid-bindings/pending'),
+    api.post(`/furniture/${furnitureId}/rfid-bindings`, data),
+  getPendingBindings: () => api.get('/rfid-bindings/pending-jobs'),
   completeBinding: (data) => api.post('/esp/rfid-bindings/complete', data),
 };
 
@@ -106,5 +105,5 @@ export const customerAPI = {
   update: (id, data) => api.put(`/customers/${id}`, data),
   delete: (id) => api.delete(`/customers/${id}`),
 };
-
+console.log('REACT_APP_API_URL:', process.env.REACT_APP_API_URL, 'API_URL used:', API_URL);
 export default api;

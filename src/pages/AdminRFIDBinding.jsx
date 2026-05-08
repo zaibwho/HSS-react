@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Card, Button, Select, Input, Alert, Loading, EmptyState, TextArea } from '../components/Common';
+import { Layout, Card, Button, Select, Input, Alert, Loading, TextArea } from '../components/Common';
 import AdminNavigation from '../components/AdminNavigation.jsx';
 import api, { espDeviceAPI, bindingAPI } from '../services/api';
 import { formatDateTime } from '../utils/helpers';
@@ -11,11 +11,15 @@ export const RFIDBindingPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [newDeviceToken, setNewDeviceToken] = useState('');
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [showDeviceForm, setShowDeviceForm] = useState(false);
+  const [revealedTokens, setRevealedTokens] = useState({});
+  const [tokenLoadingByDevice, setTokenLoadingByDevice] = useState({});
   const [formData, setFormData] = useState({
     esp_device_id: '',
+    shift_id: '',
     furniture_id: '',
   });
   const [deviceFormData, setDeviceFormData] = useState({
@@ -24,19 +28,28 @@ export const RFIDBindingPage = () => {
     notes: '',
     is_active: true,
   });
-  const [customers, setCustomers] = useState([]);
-  const [selectedCustomer, setSelectedCustomer] = useState('');
-  const [customerFurniture, setCustomerFurniture] = useState([]);
+  const [inProgressShifts, setInProgressShifts] = useState([]);
+  const [shiftFurniture, setShiftFurniture] = useState([]);
 
   useEffect(() => {
     fetchInitialData();
   }, []);
 
   useEffect(() => {
-    if (selectedCustomer) {
-      fetchCustomerFurniture(selectedCustomer);
+    if (!formData.shift_id) {
+      setShiftFurniture([]);
+      setFormData(prev => ({ ...prev, furniture_id: '' }));
+      return;
     }
-  }, [selectedCustomer]);
+
+    const selectedShift = inProgressShifts.find(shift => String(shift.id) === String(formData.shift_id));
+    const furnitureItems = selectedShift?.furniture || [];
+    setShiftFurniture(furnitureItems);
+
+    if (!furnitureItems.some(item => String(item.id) === String(formData.furniture_id))) {
+      setFormData(prev => ({ ...prev, furniture_id: '' }));
+    }
+  }, [formData.shift_id, inProgressShifts]);
 
   const fetchInitialData = async () => {
     try {
@@ -44,7 +57,7 @@ export const RFIDBindingPage = () => {
       await Promise.all([
         fetchESPDevices(),
         fetchPendingBindings(),
-        fetchCustomers(),
+        fetchInProgressShifts(),
       ]);
     } finally {
       setLoading(false);
@@ -69,23 +82,16 @@ export const RFIDBindingPage = () => {
     }
   };
 
-  const fetchCustomers = async () => {
+  const fetchInProgressShifts = async () => {
     try {
-      const response = await api.get('/customers');
-      setCustomers(response.data.data || []);
+      const response = await api.get('/shifts?status=in_progress');
+      setInProgressShifts(response.data.data || []);
     } catch (err) {
-      console.error('Failed to load customers:', err);
+      console.error('Failed to load in-progress shifts:', err);
     }
   };
 
-  const fetchCustomerFurniture = async (customerId) => {
-    try {
-      const response = await api.get(`/customers/${customerId}`);
-      setCustomerFurniture(response.data.data?.furniture_items || []);
-    } catch (err) {
-      console.error('Failed to load furniture:', err);
-    }
-  };
+  const getDeviceDisplayName = (device) => device.name || device.device_uid;
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -102,38 +108,34 @@ export const RFIDBindingPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
+    setNewDeviceToken('');
 
-    if (!formData.esp_device_id || !formData.furniture_id) {
-      setError('Please select both ESP device and furniture');
+    if (!formData.esp_device_id || !formData.shift_id || !formData.furniture_id) {
+      setError('Please select ESP device, in-progress shift, and furniture');
       return;
     }
 
     try {
       await bindingAPI.createBinding(formData.furniture_id, {
         esp_device_id: parseInt(formData.esp_device_id),
+        shift_id: parseInt(formData.shift_id),
       });
       setSuccess('RFID binding initiated. Please wait for ESP device confirmation.');
-      setFormData({ esp_device_id: '', furniture_id: '' });
+      setFormData({ esp_device_id: '', shift_id: '', furniture_id: '' });
       setShowForm(false);
-      setSelectedCustomer('');
       fetchPendingBindings();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to create binding');
     }
   };
 
-  const handleCompleteBinding = async (bindingId) => {
-    try {
-      await bindingAPI.completeBinding({ binding_id: bindingId });
-      setSuccess('RFID binding completed successfully');
-      fetchPendingBindings();
-    } catch (err) {
-      setError('Failed to complete binding');
-    }
-  };
-
   const handleDeviceSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
+    setNewDeviceToken('');
 
     if (!deviceFormData.device_uid.trim()) {
       setError('Device UID is required');
@@ -149,6 +151,7 @@ export const RFIDBindingPage = () => {
       });
 
       setSuccess(`ESP device ${response.data.data.name || response.data.data.device_uid} added successfully`);
+      setNewDeviceToken(response.data.data.device_token || '');
       setDeviceFormData({
         device_uid: '',
         name: '',
@@ -163,11 +166,45 @@ export const RFIDBindingPage = () => {
     }
   };
 
+  const handleRevealToken = async (deviceId) => {
+    if (revealedTokens[deviceId]) {
+      setRevealedTokens(prev => {
+        const next = { ...prev };
+        delete next[deviceId];
+        return next;
+      });
+      return;
+    }
+
+    try {
+      setError('');
+      setTokenLoadingByDevice(prev => ({ ...prev, [deviceId]: true }));
+      const response = await espDeviceAPI.revealToken(deviceId);
+      const token = response.data?.data?.device_token || '';
+
+      if (!token) {
+        setError('No device token found for this ESP device');
+        return;
+      }
+
+      setRevealedTokens(prev => ({ ...prev, [deviceId]: token }));
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to reveal ESP token');
+    } finally {
+      setTokenLoadingByDevice(prev => ({ ...prev, [deviceId]: false }));
+    }
+  };
+
   return (
     <Layout title="RFID Binding Management">
       <AdminNavigation />
       {error && <Alert type="danger" onClose={() => setError('')}>{error}</Alert>}
       {success && <Alert type="success" onClose={() => setSuccess('')}>{success}</Alert>}
+      {newDeviceToken && (
+        <Alert type="info" onClose={() => setNewDeviceToken('')}>
+          New device token (save this now): <span style={{ fontFamily: 'monospace' }}>{newDeviceToken}</span>
+        </Alert>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', alignItems: 'start' }}>
         {/* Binding Form */}
@@ -193,31 +230,32 @@ export const RFIDBindingPage = () => {
                   onChange={handleInputChange}
                   options={espDevices.map(device => ({
                     value: device.id,
-                    label: `${device.device_name} (${device.mac_address})`,
+                    label: `${getDeviceDisplayName(device)} (${device.device_uid})${device.is_active ? '' : ' [Inactive]'}`,
                   }))}
                   required
                 />
 
                 <Select
-                  name="selectCustomer"
-                  label="Select Customer"
-                  value={selectedCustomer}
-                  onChange={(e) => setSelectedCustomer(e.target.value)}
-                  options={customers.map(customer => ({
-                    value: customer.id,
-                    label: customer.name,
+                  name="shift_id"
+                  label="In-Progress Shift"
+                  value={formData.shift_id}
+                  onChange={handleInputChange}
+                  options={inProgressShifts.map(shift => ({
+                    value: shift.id,
+                    label: `Job #${shift.id} - ${shift.customer?.name || 'Unknown Customer'}`,
                   }))}
+                  required
                 />
 
-                {selectedCustomer && (
+                {formData.shift_id && (
                   <Select
                     name="furniture_id"
-                    label="Furniture Item"
+                    label="Shift Furniture Item"
                     value={formData.furniture_id}
                     onChange={handleInputChange}
-                    options={customerFurniture.map(item => ({
+                    options={shiftFurniture.map(item => ({
                       value: item.id,
-                      label: `${item.furniture_type} - ${item.description}`,
+                      label: `${item.furniture_type} - ${item.description || 'No description'}`,
                     }))}
                     required
                   />
@@ -311,15 +349,59 @@ export const RFIDBindingPage = () => {
                     }}
                     onClick={() => setSelectedDevice(device)}
                   >
-                    <p style={{ fontWeight: 500, margin: 0, marginBottom: '0.25rem' }}>
-                      {device.device_name}
-                    </p>
-                    <p style={{ color: 'var(--gray-600)', fontSize: '0.875rem', margin: 0 }}>
-                      MAC: {device.mac_address}
-                    </p>
-                    <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem', margin: '0.25rem 0 0 0' }}>
-                      Location: {device.location || 'Not specified'}
-                    </p>
+                    <p style={{ fontWeight: 600, margin: 0, marginBottom: '0.5rem' }}>{getDeviceDisplayName(device)}</p>
+                    <div style={{ display: 'grid', gap: '0.25rem' }}>
+                      <p style={{ color: 'var(--gray-600)', fontSize: '0.875rem', margin: 0 }}>
+                        UID: {device.device_uid}
+                      </p>
+                      <p style={{ color: 'var(--gray-600)', fontSize: '0.875rem', margin: 0 }}>
+                        Status: {device.is_active ? 'Active' : 'Inactive'}
+                      </p>
+                      <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem', margin: 0 }}>
+                        Last Seen: {device.last_seen_at ? formatDateTime(device.last_seen_at) : 'Never'}
+                      </p>
+                      <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem', margin: 0 }}>
+                        Notes: {device.notes || 'None'}
+                      </p>
+                      <p style={{ color: 'var(--gray-500)', fontSize: '0.75rem', margin: 0 }}>
+                        Added: {device.created_at ? formatDateTime(device.created_at) : 'N/A'}
+                      </p>
+                      <p style={{ color: 'var(--gray-500)', fontSize: '0.75rem', margin: 0 }}>
+                        Updated: {device.updated_at ? formatDateTime(device.updated_at) : 'N/A'}
+                      </p>
+                    </div>
+                    <div style={{ marginTop: '0.75rem', display: 'grid', gap: '0.5rem' }}>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={revealedTokens[device.id] ? 'secondary' : 'primary'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRevealToken(device.id);
+                        }}
+                        disabled={!!tokenLoadingByDevice[device.id]}
+                      >
+                        {tokenLoadingByDevice[device.id]
+                          ? 'Loading token...'
+                          : revealedTokens[device.id]
+                            ? 'Hide Token'
+                            : 'Reveal Token'}
+                      </Button>
+
+                      {revealedTokens[device.id] && (
+                        <p
+                          style={{
+                            margin: 0,
+                            fontFamily: 'monospace',
+                            fontSize: '0.75rem',
+                            color: 'var(--gray-700)',
+                            wordBreak: 'break-all',
+                          }}
+                        >
+                          Token: {revealedTokens[device.id]}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -350,20 +432,21 @@ export const RFIDBindingPage = () => {
                       {binding.furniture?.description}
                     </p>
                     <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem', margin: 0, marginBottom: '0.5rem' }}>
-                      Device: {binding.esp_device?.device_name}
+                      Device: {binding.esp_device?.name || binding.esp_device?.device_uid}
+                    </p>
+                    <p style={{ color: 'var(--gray-500)', fontSize: '0.75rem', margin: 0, marginBottom: '0.25rem' }}>
+                      Device UID: {binding.esp_device?.device_uid || 'N/A'}
+                    </p>
+                    <p style={{ color: 'var(--gray-500)', fontSize: '0.75rem', margin: 0, marginBottom: '0.25rem' }}>
+                      Shift: {binding.shift?.id ? `#${binding.shift.id}` : 'N/A'}
                     </p>
                     <p style={{ color: 'var(--gray-500)', fontSize: '0.75rem', margin: 0 }}>
-                      Created: {formatDateTime(binding.created_at)}
+                      Requested: {formatDateTime(binding.requested_at || binding.created_at)}
                     </p>
                   </div>
-                  <Button
-                    variant="success"
-                    size="sm"
-                    fullWidth
-                    onClick={() => handleCompleteBinding(binding.id)}
-                  >
-                    Mark as Complete
-                  </Button>
+                  <p style={{ color: 'var(--gray-500)', fontSize: '0.75rem', margin: 0 }}>
+                    Waiting for ESP to submit scanned RFID tag.
+                  </p>
                 </Card>
               ))}
             </div>

@@ -20,6 +20,7 @@ export const AdminShiftsList = () => {
   const [success, setSuccess] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [updatingId, setUpdatingId] = useState(null);
+  const [expandedShifts, setExpandedShifts] = useState({});
 
   useEffect(() => {
     fetchShifts();
@@ -54,6 +55,10 @@ export const AdminShiftsList = () => {
     } finally {
       setUpdatingId(null);
     }
+  };
+
+  const toggleExpand = (shiftId) => {
+    setExpandedShifts(prev => ({ ...prev, [shiftId]: !prev[shiftId] }));
   };
 
   const getStatusColor = (status) => {
@@ -114,7 +119,8 @@ export const AdminShiftsList = () => {
             </thead>
             <tbody>
               {shifts.map(shift => (
-                <tr key={shift.id}>
+                <React.Fragment key={shift.id}>
+                <tr>
                   <td>#{shift.id}</td>
                   <td>{shift.customer?.name}</td>
                   <td>{shift.pickup_address?.city}</td>
@@ -135,8 +141,48 @@ export const AdminShiftsList = () => {
                       disabled={updatingId === shift.id}
                       style={{ fontSize: '0.875rem' }}
                     />
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => toggleExpand(shift.id)}
+                      style={{ marginLeft: '0.5rem' }}
+                    >
+                      {expandedShifts[shift.id] ? 'Hide Details' : 'Details'}
+                    </Button>
                   </td>
                 </tr>
+                {expandedShifts[shift.id] && (
+                  <tr key={`${shift.id}-details`}>
+                    <td colSpan={9}>
+                      <Card>
+                        <h4 style={{ marginTop: 0 }}>Furniture Items</h4>
+                        {(!shift.furniture || shift.furniture.length === 0) ? (
+                          <p style={{ color: 'var(--gray-500)' }}>No furniture listed for this job.</p>
+                        ) : (
+                          <div style={{ display: 'grid', gap: '0.5rem' }}>
+                            {shift.furniture.map(item => (
+                              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.25rem 0' }}>
+                                <div>
+                                  <div style={{ fontWeight: 600 }}>{item.furniture_type}</div>
+                                  <div style={{ color: 'var(--gray-600)' }}>{item.description || 'No description'}</div>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                  <div style={{ fontSize: '0.875rem' }}>Qty: {item.pivot?.quantity || '-'}</div>
+                                  {item.rfid_uid ? (
+                                    <div style={{ color: 'var(--gray-700)', fontFamily: 'monospace' }}>{item.rfid_uid}</div>
+                                  ) : (
+                                    <div style={{ color: 'var(--danger)', fontWeight: 700 }}>Not bind</div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </Card>
+                    </td>
+                  </tr>
+                )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>

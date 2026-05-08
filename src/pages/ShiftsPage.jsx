@@ -22,6 +22,7 @@ export const ShiftsPage = () => {
   });
   const [selectedFurniture, setSelectedFurniture] = useState([]);
   const [furnitureQuantities, setFurnitureQuantities] = useState({});
+  const [expandedShifts, setExpandedShifts] = useState({});
 
   useEffect(() => {
     Promise.all([
@@ -278,9 +279,18 @@ export const ShiftsPage = () => {
                   <h3 style={{ marginBottom: '0.5rem' }}>Job #{shift.id}</h3>
                   <Badge variant={shift.status?.toLowerCase()}>{getStatusLabel(shift.status)}</Badge>
                 </div>
-                <span style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>
-                  {formatDateTime(shift.requested_at)}
-                </span>
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.875rem', color: 'var(--gray-500)' }}>
+                    {formatDateTime(shift.requested_at)}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setExpandedShifts(prev => ({ ...prev, [shift.id]: !prev[shift.id] }))}
+                  >
+                    {expandedShifts[shift.id] ? 'Hide Details' : 'Details'}
+                  </Button>
+                </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
@@ -304,6 +314,34 @@ export const ShiftsPage = () => {
                 <p style={{ color: 'var(--gray-600)', fontSize: '0.875rem', fontStyle: 'italic', marginBottom: '1rem' }}>
                   <strong>Notes:</strong> {shift.notes}
                 </p>
+              )}
+
+              {expandedShifts[shift.id] && (
+                <Card>
+                  <h4 style={{ marginTop: 0 }}>Furniture Items</h4>
+                  {(!shift.furniture || shift.furniture.length === 0) ? (
+                    <p style={{ color: 'var(--gray-500)' }}>No furniture listed for this job.</p>
+                  ) : (
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      {shift.furniture.map(item => (
+                        <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.25rem 0' }}>
+                          <div>
+                            <div style={{ fontWeight: 600 }}>{item.furniture_type}</div>
+                            <div style={{ color: 'var(--gray-600)' }}>{item.description || 'No description'}</div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '0.875rem' }}>Qty: {item.pivot?.quantity || '-'}</div>
+                            {item.rfid_uid ? (
+                              <div style={{ color: 'var(--gray-700)', fontFamily: 'monospace' }}>{item.rfid_uid}</div>
+                            ) : (
+                              <div style={{ color: 'var(--danger)', fontWeight: 700 }}>Not bind</div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card>
               )}
             </Card>
           ))}
