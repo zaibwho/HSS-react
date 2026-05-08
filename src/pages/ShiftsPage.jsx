@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useCustomerAuth } from '../context/CustomerAuthContext';
 import { Layout, Card, Button, Select, Alert, Loading, EmptyState, Badge } from '../components/Common';
 import CustomerNavigation from '../components/CustomerNavigation.jsx';
@@ -12,6 +12,7 @@ export const ShiftsPage = () => {
   const [addresses, setAddresses] = useState([]);
   const [furniture, setFurniture] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -24,34 +25,31 @@ export const ShiftsPage = () => {
   const [furnitureQuantities, setFurnitureQuantities] = useState({});
   const [expandedShifts, setExpandedShifts] = useState({});
 
-  useEffect(() => {
-    Promise.all([
-      fetchShifts(),
-      fetchAddresses(),
-      fetchFurniture(),
-    ]);
-  }, []);
-
-  const fetchShifts = async () => {
+  const fetchShifts = useCallback(async ({ quiet = false } = {}) => {
     try {
+      if (quiet) {
+        setRefreshing(true);
+      }
       const response = await customerApi.get('/shifts');
       setShifts(response.data.data || []);
       setError('');
     } catch (err) {
       console.error('Failed to load shifts:', err);
+    } finally {
+      setRefreshing(false);
     }
-  };
+  }, []);
 
-  const fetchAddresses = async () => {
+  const fetchAddresses = useCallback(async () => {
     try {
       const response = await addressAPI.getAll(customer?.id);
       setAddresses(response.data.data || []);
     } catch (err) {
       console.error('Failed to load addresses:', err);
     }
-  };
+  }, [customer?.id]);
 
-  const fetchFurniture = async () => {
+  const fetchFurniture = useCallback(async () => {
     try {
       const response = await furnitureAPI.getAll(customer?.id);
       setFurniture(response.data.data || []);
@@ -60,7 +58,23 @@ export const ShiftsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [customer?.id]);
+
+  useEffect(() => {
+    Promise.all([
+      fetchShifts(),
+      fetchAddresses(),
+      fetchFurniture(),
+    ]);
+  }, [fetchShifts, fetchAddresses, fetchFurniture]);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      fetchShifts({ quiet: true });
+    }, 10000);
+
+    return () => clearInterval(intervalId);
+  }, [fetchShifts]);
 
   const handleAddressChange = (e) => {
     const { name, value } = e.target;
@@ -142,12 +156,21 @@ export const ShiftsPage = () => {
 
       <div className="header">
         <h2>Your Shifting Jobs</h2>
-        <Button
-          variant={showForm ? 'secondary' : 'primary'}
-          onClick={() => (showForm ? resetForm() : setShowForm(true))}
-        >
-          {showForm ? 'Cancel' : '+ Create Shift'}
-        </Button>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <Button
+            variant="secondary"
+            onClick={() => fetchShifts({ quiet: true })}
+            disabled={refreshing}
+          >
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
+          <Button
+            variant={showForm ? 'secondary' : 'primary'}
+            onClick={() => (showForm ? resetForm() : setShowForm(true))}
+          >
+            {showForm ? 'Cancel' : '+ Create Shift'}
+          </Button>
+        </div>
       </div>
 
       {showForm && (

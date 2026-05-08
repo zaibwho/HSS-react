@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Layout, Card, Button, Select, Alert, Loading, EmptyState, Badge } from '../components/Common';
 import AdminNavigation from '../components/AdminNavigation.jsx';
 import api from '../services/api';
@@ -16,19 +16,21 @@ const SHIFT_STATUSES = [
 export const AdminShiftsList = () => {
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [updatingId, setUpdatingId] = useState(null);
   const [expandedShifts, setExpandedShifts] = useState({});
 
-  useEffect(() => {
-    fetchShifts();
-  }, [statusFilter]);
-
-  const fetchShifts = async () => {
+  const fetchShifts = useCallback(async ({ quiet = false } = {}) => {
     try {
-      setLoading(true);
+      if (quiet) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
       let url = '/shifts';
       if (statusFilter) {
         url += `?status=${statusFilter}`;
@@ -41,15 +43,28 @@ export const AdminShiftsList = () => {
       console.error(err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, [statusFilter]);
+
+  useEffect(() => {
+    fetchShifts();
+  }, [fetchShifts]);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      fetchShifts({ quiet: true });
+    }, 10000);
+
+    return () => clearInterval(intervalId);
+  }, [fetchShifts]);
 
   const handleStatusUpdate = async (shiftId, newStatus) => {
     try {
       setUpdatingId(shiftId);
       await api.put(`/shifts/${shiftId}`, { status: newStatus });
       setSuccess('Shift status updated successfully');
-      fetchShifts();
+      fetchShifts({ quiet: true });
     } catch (err) {
       setError('Failed to update shift status');
     } finally {
@@ -82,16 +97,21 @@ export const AdminShiftsList = () => {
       {error && <Alert type="danger" onClose={() => setError('')}>{error}</Alert>}
       {success && <Alert type="success" onClose={() => setSuccess('')}>{success}</Alert>}
 
-      <div style={{ marginBottom: '2rem' }}>
+      <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '1rem', flexWrap: 'wrap' }}>
         <h3 style={{ marginBottom: '1rem' }}>Filter by Status</h3>
-        <Select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          options={[
-            { value: '', label: 'All Statuses' },
-            ...SHIFT_STATUSES,
-          ]}
-        />
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <Select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            options={[
+              { value: '', label: 'All Statuses' },
+              ...SHIFT_STATUSES,
+            ]}
+          />
+          <Button variant="secondary" onClick={() => fetchShifts({ quiet: true })} disabled={refreshing}>
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
+        </div>
       </div>
 
       {loading ? (
